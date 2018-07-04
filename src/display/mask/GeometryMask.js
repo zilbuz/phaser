@@ -79,7 +79,7 @@ var GeometryMask = new Class({
         // Use stencil buffer to affect next rendering object
         gl.colorMask(true, true, true, true);
         gl.stencilFunc(gl.EQUAL, 1, 1);
-        gl.stencilOp(gl.INVERT, gl.INVERT, gl.INVERT);
+        gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
     },
 
     /**
@@ -135,7 +135,7 @@ var GeometryMask = new Class({
 
     /**
      * Destroys this GeometryMask and nulls any references it holds.
-     * 
+     *
      * Note that if a Game Object is currently using this mask it will _not_ automatically detect you have destroyed it,
      * so be sure to call `clearMask` on any Game Object using it, before destroying it.
      *

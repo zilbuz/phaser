@@ -12629,7 +12629,7 @@ var DataManager = new Class({
          * ```
          *
          * You can also modify it directly:
-         * 
+         *
          * ```javascript
          * this.data.values.gold += 1000;
          * ```
@@ -12664,19 +12664,19 @@ var DataManager = new Class({
      * Retrieves the value for the given key, or undefined if it doesn't exist.
      *
      * You can also access values via the `values` object. For example, if you had a key called `gold` you can do either:
-     * 
+     *
      * ```javascript
      * this.data.get('gold');
      * ```
      *
      * Or access the value directly:
-     * 
+     *
      * ```javascript
      * this.data.values.gold;
      * ```
      *
      * You can also pass in an array of keys, in which case an array of values will be returned:
-     * 
+     *
      * ```javascript
      * this.data.get([ 'gold', 'armor', 'health' ]);
      * ```
@@ -12761,7 +12761,7 @@ var DataManager = new Class({
 
     /**
      * Sets a value for the given key. If the key doesn't already exist in the Data Manager then it is created.
-     * 
+     *
      * ```javascript
      * data.set('name', 'Red Gem Stone');
      * ```
@@ -12773,13 +12773,13 @@ var DataManager = new Class({
      * ```
      *
      * To get a value back again you can call `get`:
-     * 
+     *
      * ```javascript
      * data.get('gold');
      * ```
-     * 
+     *
      * Or you can access the value directly via the `values` property, where it works like any other variable:
-     * 
+     *
      * ```javascript
      * data.values.gold += 50;
      * ```
@@ -12869,8 +12869,8 @@ var DataManager = new Class({
                     {
                         list[key] = value;
 
-                        events.emit('changedata', parent, key, data);
-                        events.emit('changedata_' + key, parent, data);
+                        events.emit('changedata', parent, key, value);
+                        events.emit('changedata_' + key, parent, value);
                     }
                 }
 
@@ -12951,9 +12951,9 @@ var DataManager = new Class({
      *
      * If the key is found in this Data Manager it is removed from the internal lists and a
      * `removedata` event is emitted.
-     * 
+     *
      * You can also pass in an array of keys, in which case all keys in the array will be removed:
-     * 
+     *
      * ```javascript
      * this.data.remove([ 'gold', 'armor', 'health' ]);
      * ```
@@ -13042,7 +13042,7 @@ var DataManager = new Class({
 
     /**
      * Determines whether the given key is set in this Data Manager.
-     * 
+     *
      * Please note that the keys are case-sensitive and must be valid JavaScript Object property strings.
      * This means the keys `gold` and `Gold` are treated as two unique values within the Data Manager.
      *
@@ -50776,7 +50776,7 @@ var GeometryMask = new Class({
         // Use stencil buffer to affect next rendering object
         gl.colorMask(true, true, true, true);
         gl.stencilFunc(gl.EQUAL, 1, 1);
-        gl.stencilOp(gl.INVERT, gl.INVERT, gl.INVERT);
+        gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
     },
 
     /**
@@ -50832,7 +50832,7 @@ var GeometryMask = new Class({
 
     /**
      * Destroys this GeometryMask and nulls any references it holds.
-     * 
+     *
      * Note that if a Game Object is currently using this mask it will _not_ automatically detect you have destroyed it,
      * so be sure to call `clearMask` on any Game Object using it, before destroying it.
      *

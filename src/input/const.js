@@ -8,7 +8,7 @@ var INPUT_CONST = {
 
     /**
      * The mouse pointer is being held down.
-     * 
+     *
      * @name Phaser.Input.MOUSE_DOWN
      * @type {integer}
      * @since 3.10.0
@@ -17,7 +17,7 @@ var INPUT_CONST = {
 
     /**
      * The mouse pointer is being moved.
-     * 
+     *
      * @name Phaser.Input.MOUSE_MOVE
      * @type {integer}
      * @since 3.10.0
@@ -26,7 +26,7 @@ var INPUT_CONST = {
 
     /**
      * The mouse pointer is released.
-     * 
+     *
      * @name Phaser.Input.MOUSE_UP
      * @type {integer}
      * @since 3.10.0
@@ -34,40 +34,49 @@ var INPUT_CONST = {
     MOUSE_UP: 2,
 
     /**
+     * The mouse wheel is used.
+     *
+     * @name Phaser.Input.MOUSE_WHEEL
+     * @type {integer}
+     * @since custom_v3.11
+     */
+    MOUSE_WHEEL: 3,
+
+    /**
      * A touch pointer has been started.
-     * 
+     *
      * @name Phaser.Input.TOUCH_START
      * @type {integer}
      * @since 3.10.0
      */
-    TOUCH_START: 3,
+    TOUCH_START: 4,
 
     /**
      * A touch pointer has been started.
-     * 
+     *
      * @name Phaser.Input.TOUCH_MOVE
      * @type {integer}
      * @since 3.10.0
      */
-    TOUCH_MOVE: 4,
+    TOUCH_MOVE: 5,
 
     /**
      * A touch pointer has been started.
-     * 
+     *
      * @name Phaser.Input.TOUCH_END
      * @type {integer}
      * @since 3.10.0
      */
-    TOUCH_END: 5,
+    TOUCH_END: 6,
 
     /**
      * The pointer lock has changed.
-     * 
+     *
      * @name Phaser.Input.POINTER_LOCK_CHANGE
      * @type {integer}
      * @since 3.10.0
      */
-    POINTER_LOCK_CHANGE: 6
+    POINTER_LOCK_CHANGE: 7
 
 };
 

@@ -108,7 +108,7 @@ var InputManager = new Class({
          * @type {object}
          * @since 3.10.0
          */
-        this.domCallbacks = { up: [], down: [], move: [], upOnce: [], downOnce: [], moveOnce: [] };
+        this.domCallbacks = { up: [], down: [], move: [], wheel: [], upOnce: [], downOnce: [], moveOnce: [], wheelOnce: [] };
 
         /**
          * Are there any up callbacks defined?
@@ -139,6 +139,16 @@ var InputManager = new Class({
          * @since 3.10.0
          */
         this._hasMoveCallback = false;
+
+        /**
+         * Are there any wheel callbacks defined
+         *
+         * @name Phaser.Input.InputManager#_hasWheelCallback
+         * @private
+         * @type {boolean}
+         * @since custom_v3.11
+         */
+        this._hasWheelCallback = false;
 
         /**
          * Is a custom cursor currently set? (desktop only)
@@ -469,6 +479,10 @@ var InputManager = new Class({
                     mouse.up(event, time);
                     break;
 
+                case CONST.MOUSE_WHEEL:
+                    mouse.wheel(event, time);
+                    break;
+
                 case CONST.TOUCH_START:
                     this.startPointer(event, time);
                     break;
@@ -509,7 +523,7 @@ var InputManager = new Class({
 
     /**
      * Tells the Input system to set a custom cursor.
-     * 
+     *
      * This cursor will be the default cursor used when interacting with the game canvas.
      *
      * If an Interactive Object also sets a custom cursor, this is the cursor that is reset after its use.
@@ -519,7 +533,7 @@ var InputManager = new Class({
      * ```javascript
      * this.input.setDefaultCursor('url(assets/cursors/sword.cur), pointer');
      * ```
-     * 
+     *
      * Please read about the differences between browsers when it comes to the file formats and sizes they support:
      *
      * https://developer.mozilla.org/en-US/docs/Web/CSS/cursor
@@ -529,7 +543,7 @@ var InputManager = new Class({
      *
      * @method Phaser.Input.InputManager#setDefaultCursor
      * @since 3.10.0
-     * 
+     *
      * @param {string} cursor - The CSS to be used when setting the default cursor.
      */
     setDefaultCursor: function (cursor)
@@ -544,7 +558,7 @@ var InputManager = new Class({
 
     /**
      * Called by the InputPlugin when processing over and out events.
-     * 
+     *
      * Tells the Input Manager to set a custom cursor during its postUpdate step.
      *
      * https://developer.mozilla.org/en-US/docs/Web/CSS/cursor
@@ -552,7 +566,7 @@ var InputManager = new Class({
      * @method Phaser.Input.InputManager#setCursor
      * @private
      * @since 3.10.0
-     * 
+     *
      * @param {Phaser.Input.InteractiveObject} interactiveObject - The Interactive Object that called this method.
      */
     setCursor: function (interactiveObject)
@@ -566,13 +580,13 @@ var InputManager = new Class({
 
     /**
      * Called by the InputPlugin when processing over and out events.
-     * 
+     *
      * Tells the Input Manager to clear the hand cursor, if set, during its postUpdate step.
      *
      * @method Phaser.Input.InputManager#resetCursor
      * @private
      * @since 3.10.0
-     * 
+     *
      * @param {Phaser.Input.InteractiveObject} interactiveObject - The Interactive Object that called this method.
      */
     resetCursor: function (interactiveObject)
@@ -896,6 +910,28 @@ var InputManager = new Class({
     },
 
     /**
+     * Queues a mouse wheel event, as passed in by the MouseManager.
+     * Also dispatches any DOM callbacks for this event.
+     *
+     * @method Phaser.Input.InputManager#queueMouseWheel
+     * @private
+     * @since custom_v3.11
+     *
+     * @param {WheelEvent} event - The native DOM Mouse event.
+     */
+    queueMouseWheel: function (event)
+    {
+        this.queue.push(CONST.MOUSE_WHEEL, event);
+
+        if (this._hasWheelCallback)
+        {
+            var callbacks = this.domCallbacks;
+
+            this._hasWheelCallback = this.processDomCallbacks(callbacks.wheelOnce, callbacks.wheel, event);
+        }
+    },
+
+    /**
      * Adds a callback to be invoked whenever the native DOM `mouseup` or `touchend` events are received.
      * By setting the `isOnce` argument you can control if the callback is called once,
      * or every time the DOM event occurs.
@@ -1035,6 +1071,54 @@ var InputManager = new Class({
         }
 
         this._hasMoveCallback = true;
+
+        return this;
+    },
+
+    /**
+     * Adds a callback to be invoked whenever the native DOM `mousewheel` event is received.
+     * By setting the `isOnce` argument you can control if the callback is called once,
+     * or every time the DOM event occurs.
+     *
+     * Callbacks passed to this method are invoked _immediately_ when the DOM event happens,
+     * within the scope of the DOM event handler. Therefore, they are considered as 'native'
+     * from the perspective of the browser. This means they can be used for tasks such as
+     * opening new browser windows, or anything which explicitly requires user input to activate.
+     * However, as a result of this, they come with their own risks, and as such should not be used
+     * for general game input, but instead be reserved for special circumstances.
+     *
+     * If all you're trying to do is execute a callback when a pointer is moved, then
+     * please use the internal Input event system instead.
+     *
+     * Please understand that these callbacks are invoked when the browser feels like doing so,
+     * which may be entirely out of the normal flow of the Phaser Game Loop. Therefore, you should absolutely keep
+     * Phaser related operations to a minimum in these callbacks. For example, don't destroy Game Objects,
+     * change Scenes or manipulate internal systems, otherwise you run a very real risk of creating
+     * heisenbugs (https://en.wikipedia.org/wiki/Heisenbug) that prove a challenge to reproduce, never mind
+     * solve.
+     *
+     * @method Phaser.Input.InputManager#addWheelCallback
+     * @since custom_v3.11
+     *
+     * @param {function} callback - The callback to be invoked on this dom event.
+     * @param {boolean} [isOnce=false] - `true` if the callback will only be invoked once, `false` to call every time this event happens.
+     *
+     * @return {this} The Input Manager.
+     */
+    addWheelCallback: function (callback, isOnce)
+    {
+        if (isOnce === undefined) { isOnce = false; }
+
+        if (isOnce)
+        {
+            this.domCallbacks.wheelOnce.push(callback);
+        }
+        else
+        {
+            this.domCallbacks.wheel.push(callback);
+        }
+
+        this._hasWheelCallback = true;
 
         return this;
     },

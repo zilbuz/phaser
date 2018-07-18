@@ -13,9 +13,9 @@ var Features = require('../../device/Features');
 /**
  * @classdesc
  * The Mouse Manager is a helper class that belongs to the Input Manager.
- * 
+ *
  * Its role is to listen for native DOM Mouse Events and then pass them onto the Input Manager for further processing.
- * 
+ *
  * You do not need to create this class directly, the Input Manager will create an instance of it automatically.
  *
  * @class MouseManager
@@ -117,9 +117,9 @@ var MouseManager = new Class({
 
     /**
      * Attempts to disable the context menu from appearing if you right-click on the browser.
-     * 
+     *
      * Works by listening for the `contextmenu` event and prevent defaulting it.
-     * 
+     *
      * Use this if you need to enable right-button mouse support in your game, and the browser
      * menu keeps getting in the way.
      *
@@ -271,6 +271,30 @@ var MouseManager = new Class({
     },
 
     /**
+     * The Mouse Wheel Event Handler
+     *
+     * @method Phaser.Input.Mouse.MouseManager#onMouseWheel
+     * @since custom_v3.11
+     *
+     * @param {WheelEvent} event - The native DOM Mouse Wheel Event.
+     */
+    onMouseWheel: function (event)
+    {
+        if (event.defaultPrevented || !this.enabled)
+        {
+            // Do nothing if event already handled
+            return;
+        }
+
+        this.manager.queueMouseWheel(event);
+
+        if (this.capture)
+        {
+            event.preventDefault();
+        }
+    },
+
+    /**
      * Starts the Mouse Event listeners running.
      * This is called automatically and does not need to be manually invoked.
      *
@@ -289,12 +313,24 @@ var MouseManager = new Class({
             target.addEventListener('mousemove', this.onMouseMove.bind(this), nonPassive);
             target.addEventListener('mousedown', this.onMouseDown.bind(this), nonPassive);
             target.addEventListener('mouseup', this.onMouseUp.bind(this), nonPassive);
+
+            // FIXME The only mouse wheel event supported is the standard one ('wheel'). To support
+            // the other possible events ('mousewheel' and 'DOMMouseScroll', Input.wheelEvent should
+            // be used and Pointer.wheel() should be updated to convert the native events into phaser
+            // specific properties.
+            target.addEventListener('wheel', this.onMouseWheel.bind(this), nonPassive);
         }
         else
         {
             target.addEventListener('mousemove', this.onMouseMove.bind(this), passive);
             target.addEventListener('mousedown', this.onMouseDown.bind(this), passive);
             target.addEventListener('mouseup', this.onMouseUp.bind(this), passive);
+
+            // FIXME The only mouse wheel event supported is the standard one ('wheel'). To support
+            // the other possible events ('mousewheel' and 'DOMMouseScroll', Input.wheelEvent should
+            // be used and Pointer.wheel() should be updated to convert the native events into phaser
+            // specific properties.
+            target.addEventListener('wheel', this.onMouseWheel.bind(this), passive);
         }
 
         if (Features.pointerLock)
@@ -321,6 +357,12 @@ var MouseManager = new Class({
         target.removeEventListener('mousemove', this.onMouseMove);
         target.removeEventListener('mousedown', this.onMouseDown);
         target.removeEventListener('mouseup', this.onMouseUp);
+
+        // FIXME The only mouse wheel event supported is the standard one ('wheel'). To support
+        // the other possible events ('mousewheel' and 'DOMMouseScroll', Input.wheelEvent should
+        // be used and Pointer.wheel() should be updated to convert the native events into phaser
+        // specific properties.
+        target.removeEventListener('wheel', this.onMouseWheel);
 
         if (Features.pointerLock)
         {

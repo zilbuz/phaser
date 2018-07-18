@@ -144,9 +144,9 @@ var InputPlugin = new Class({
 
         /**
          * A reference to the Mouse Manager.
-         * 
+         *
          * This property is only set if Mouse support has been enabled in your Game Configuration file.
-         * 
+         *
          * If you just wish to get access to the mouse pointer, use the `mousePointer` property instead.
          *
          * @name Phaser.Input.InputPlugin#mouse
@@ -170,17 +170,17 @@ var InputPlugin = new Class({
 
         /**
          * How often should the Pointers be checked?
-         * 
+         *
          * The value is a time, given in ms, and is the time that must have elapsed between game steps before
          * the Pointers will be polled again. When a pointer is polled it runs a hit test to see which Game
          * Objects are currently below it, or being interacted with it.
-         * 
+         *
          * Pointers will *always* be checked if they have been moved by the user, or press or released.
-         * 
+         *
          * This property only controls how often they will be polled if they have not been updated.
          * You should set this if you want to have Game Objects constantly check against the pointers, even
          * if the pointer didn't move itself.
-         * 
+         *
          * Set to 0 to poll constantly. Set to -1 to only poll on user movement.
          *
          * @name Phaser.Input.InputPlugin#pollRate
@@ -529,6 +529,11 @@ var InputPlugin = new Class({
             if (pointer.justMoved)
             {
                 total += this.processMoveEvents(pointer);
+            }
+
+            if (pointer.justWheeled)
+            {
+                total += this.processWheelEvents(pointer);
             }
 
             if (total > 0 && manager.globalTopOnly)
@@ -1234,6 +1239,50 @@ var InputPlugin = new Class({
     },
 
     /**
+     * An internal method that handles the Pointer wheel events.
+     *
+     * @method Phaser.Input.InputPlugin#processWheelEvents
+     * @private
+     * @since custom_v3.11
+     *
+     * @param {Phaser.Input.Pointer} pointer - The pointer to check for events against.
+     *
+     * @return {integer} The total number of objects interacted with.
+     */
+    processWheelEvents: function (pointer)
+    {
+        var currentlyOver = this._temp;
+
+        this.emit('pointerwheel', pointer, currentlyOver);
+
+        var total = 0;
+
+        //  Go through all objects the pointer was over and fire their events / callbacks
+        for (var i = 0; i < currentlyOver.length; i++)
+        {
+            var gameObject = currentlyOver[i];
+
+            if (!gameObject.input)
+            {
+                continue;
+            }
+
+            total++;
+
+            gameObject.emit('pointerwheel', pointer, gameObject.input.localX, gameObject.input.localY);
+
+            this.emit('gameobjectwheel', pointer, gameObject);
+
+            if (this.topOnly)
+            {
+                break;
+            }
+        }
+
+        return total;
+    },
+
+    /**
      * Queues a Game Object for insertion into this Input Plugin on the next update.
      *
      * @method Phaser.Input.InputPlugin#queueForInsertion
@@ -1326,7 +1375,7 @@ var InputPlugin = new Class({
      * ```javascript
      * this.add.sprite(x, y, key).setInteractive(this.input.makePixelPerfect());
      * ```
-     * 
+     *
      * The following will create a sprite that is clickable on any pixel that has an alpha value >= 150.
      *
      * ```javascript
@@ -1339,7 +1388,7 @@ var InputPlugin = new Class({
      * As a pointer interacts with the Game Object it will constantly poll the texture, extracting a single pixel from
      * the given coordinates and checking its color values. This is an expensive process, so should only be enabled on
      * Game Objects that really need it.
-     * 
+     *
      * You cannot make non-texture based Game Objects pixel perfect. So this will not work on Graphics, BitmapText,
      * Render Textures, Text, Tilemaps, Containers or Particles.
      *
@@ -1627,7 +1676,7 @@ var InputPlugin = new Class({
 
     /**
      * Sets the Pointers to always poll.
-     * 
+     *
      * When a pointer is polled it runs a hit test to see which Game Objects are currently below it,
      * or being interacted with it, regardless if the Pointer has actually moved or not.
      *
@@ -1650,7 +1699,7 @@ var InputPlugin = new Class({
 
     /**
      * Sets the Pointers to only poll when they are moved or updated.
-     * 
+     *
      * When a pointer is polled it runs a hit test to see which Game Objects are currently below it,
      * or being interacted with it.
      *
@@ -1943,6 +1992,43 @@ var InputPlugin = new Class({
     },
 
     /**
+     * Adds a callback to be invoked whenever the native DOM `mousewheel` event is received.
+     * By setting the `isOnce` argument you can control if the callback is called once,
+     * or every time the DOM event occurs.
+     *
+     * Callbacks passed to this method are invoked _immediately_ when the DOM event happens,
+     * within the scope of the DOM event handler. Therefore, they are considered as 'native'
+     * from the perspective of the browser. This means they can be used for tasks such as
+     * opening new browser windows, or anything which explicitly requires user input to activate.
+     * However, as a result of this, they come with their own risks, and as such should not be used
+     * for general game input, but instead be reserved for special circumstances.
+     *
+     * If all you're trying to do is execute a callback when a pointer is moved, then
+     * please use the internal Input event system instead.
+     *
+     * Please understand that these callbacks are invoked when the browser feels like doing so,
+     * which may be entirely out of the normal flow of the Phaser Game Loop. Therefore, you should absolutely keep
+     * Phaser related operations to a minimum in these callbacks. For example, don't destroy Game Objects,
+     * change Scenes or manipulate internal systems, otherwise you run a very real risk of creating
+     * heisenbugs (https://en.wikipedia.org/wiki/Heisenbug) that prove a challenge to reproduce, never mind
+     * solve.
+     *
+     * @method Phaser.Input.InputPlugin#addWheelCallback
+     * @since custom_v3.11
+     *
+     * @param {function} callback - The callback to be invoked on this dom event.
+     * @param {boolean} [isOnce=false] - `true` if the callback will only be invoked once, `false` to call every time this event happens.
+     *
+     * @return {this} The Input Manager.
+     */
+    addWheelCallback: function (callback, isOnce)
+    {
+        this.manager.addWheelCallback(callback, isOnce);
+
+        return this;
+    },
+
+    /**
      * Adds new Pointer objects to the Input Manager.
      *
      * By default Phaser creates 2 pointer objects: `mousePointer` and `pointer1`.
@@ -1955,7 +2041,7 @@ var InputPlugin = new Class({
      *
      * @method Phaser.Input.InputPlugin#addPointer
      * @since 3.10.0
-     * 
+     *
      * @param {integer} [quantity=1] The number of new Pointers to create. A maximum of 10 is allowed in total.
      *
      * @return {Phaser.Input.Pointer[]} An array containing all of the new Pointer objects that were created.
@@ -1967,7 +2053,7 @@ var InputPlugin = new Class({
 
     /**
      * Tells the Input system to set a custom cursor.
-     * 
+     *
      * This cursor will be the default cursor used when interacting with the game canvas.
      *
      * If an Interactive Object also sets a custom cursor, this is the cursor that is reset after its use.
@@ -1977,7 +2063,7 @@ var InputPlugin = new Class({
      * ```javascript
      * this.input.setDefaultCursor('url(assets/cursors/sword.cur), pointer');
      * ```
-     * 
+     *
      * Please read about the differences between browsers when it comes to the file formats and sizes they support:
      *
      * https://developer.mozilla.org/en-US/docs/Web/CSS/cursor
@@ -1987,7 +2073,7 @@ var InputPlugin = new Class({
      *
      * @method Phaser.Input.InputPlugin#setDefaultCursor
      * @since 3.10.0
-     * 
+     *
      * @param {string} cursor - The CSS to be used when setting the default cursor.
      *
      * @return {Phaser.Input.InputPlugin} This Input instance.
@@ -2077,7 +2163,7 @@ var InputPlugin = new Class({
     },
 
     /**
-     * The Scene that owns this plugin is being destroyed.     
+     * The Scene that owns this plugin is being destroyed.
      * We need to shutdown and then kill off all external references.
      *
      * @method Phaser.Input.InputPlugin#destroy

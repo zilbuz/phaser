@@ -46,17 +46,32 @@ return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// define getter function for harmony exports
 /******/ 	__webpack_require__.d = function(exports, name, getter) {
 /******/ 		if(!__webpack_require__.o(exports, name)) {
-/******/ 			Object.defineProperty(exports, name, {
-/******/ 				configurable: false,
-/******/ 				enumerable: true,
-/******/ 				get: getter
-/******/ 			});
+/******/ 			Object.defineProperty(exports, name, { enumerable: true, get: getter });
 /******/ 		}
 /******/ 	};
 /******/
 /******/ 	// define __esModule on exports
 /******/ 	__webpack_require__.r = function(exports) {
+/******/ 		if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
+/******/ 			Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+/******/ 		}
 /******/ 		Object.defineProperty(exports, '__esModule', { value: true });
+/******/ 	};
+/******/
+/******/ 	// create a fake namespace object
+/******/ 	// mode & 1: value is a module id, require it
+/******/ 	// mode & 2: merge all properties of value into the ns
+/******/ 	// mode & 4: return value when already ns object
+/******/ 	// mode & 8|1: behave like require
+/******/ 	__webpack_require__.t = function(value, mode) {
+/******/ 		if(mode & 1) value = __webpack_require__(value);
+/******/ 		if(mode & 8) return value;
+/******/ 		if((mode & 4) && typeof value === 'object' && value && value.__esModule) return value;
+/******/ 		var ns = Object.create(null);
+/******/ 		__webpack_require__.r(ns);
+/******/ 		Object.defineProperty(ns, 'default', { enumerable: true, value: value });
+/******/ 		if(mode & 2 && typeof value != 'string') for(var key in value) __webpack_require__.d(ns, key, function(key) { return value[key]; }.bind(null, key));
+/******/ 		return ns;
 /******/ 	};
 /******/
 /******/ 	// getDefaultExport function for compatibility with non-harmony modules
@@ -46114,7 +46129,7 @@ var Pointer = new Class({
 
         /**
          * The camera the Pointer interacted with during its last update.
-         * 
+         *
          * A Pointer can only ever interact with one camera at once, which will be the top-most camera
          * in the list should multiple cameras be positioned on-top of each other.
          *
@@ -46132,7 +46147,7 @@ var Pointer = new Class({
          * 4: Wheel button or middle button
          * 8: 4th button (typically the "Browser Back" button)
          * 16: 5th button (typically the "Browser Forward" button)
-         * 
+         *
          * For a mouse configured for left-handed use, the button actions are reversed.
          * In this case, the values are read from right to left.
          *
@@ -46154,9 +46169,9 @@ var Pointer = new Class({
 
         /**
          * The previous position of the Pointer in screen space.
-         * 
+         *
          * The old x and y values are stored in here during the InputManager.transformPointer call.
-         * 
+         *
          * You can use it to track how fast the pointer is moving, or to smoothly interpolate between the old and current position.
          * See the `Pointer.getInterpolatedPosition` method to assist in this.
          *
@@ -46271,6 +46286,52 @@ var Pointer = new Class({
         this.dragState = 0;
 
         /**
+         * The unit of the delta values for `wheelDeltaX`, `wheelDeltaY` and
+         * `wheelDeltaZ`.
+         *
+         * Permitted values are:
+         * - `WheelEvent.DOM_DELTA_PIXEL = 0x00` - The delta values are specified in pixels
+         * - `WheelEvent.DOM_DELTA_LINE = 0x01` - The delta values are specified in lines
+         * - `WheelEvent.DOM_DELTA_PAGE = 0x02` - The delta values are specified in pages
+         *
+         * @name Phaser.Input.Pointer#wheelDeltaMode
+         * @type {number}
+         * @default 0
+         * @since custom_v3.11
+         */
+        this.wheelDeltaMode = 0;
+
+        /**
+         * The horizontal scroll amount in the unit specified by `wheelDeltaMode`.
+         *
+         * @name Phaser.Input.Pointer#wheelDeltaX
+         * @type {number}
+         * @default 0
+         * @since custom_v3.11
+         */
+        this.wheelDeltaX = 0;
+
+        /**
+         * The vertical scroll amount in the unit specified by `wheelDeltaMode`.
+         *
+         * @name Phaser.Input.Pointer#wheelDeltaY
+         * @type {number}
+         * @default 0
+         * @since custom_v3.11
+         */
+        this.wheelDeltaY = 0;
+
+        /**
+         * The scroll amount for the z-axis in the unit specified by `wheelDeltaMode`.
+         *
+         * @name Phaser.Input.Pointer#wheelDeltaZ
+         * @type {number}
+         * @default 0
+         * @since custom_v3.11
+         */
+        this.wheelDeltaZ = 0;
+
+        /**
          * Is _any_ button on this pointer considered as being down?
          *
          * @name Phaser.Input.Pointer#isDown
@@ -46319,6 +46380,16 @@ var Pointer = new Class({
          * @since 3.0.0
          */
         this.justMoved = false;
+
+        /**
+         * Is this Pointer considered as having "just use the wheel" or not?
+         *
+         * @name Phaser.Input.Pointer#justWheeled
+         * @type {boolean}
+         * @default false
+         * @since custom_v3.11
+         */
+        this.justWheeled = false;
 
         /**
          * Did the previous input event come from a Touch input (true) or Mouse? (false)
@@ -46412,6 +46483,7 @@ var Pointer = new Class({
         this.justDown = false;
         this.justUp = false;
         this.justMoved = false;
+        this.justWheeled = false;
 
         this.movementX = 0;
         this.movementY = 0;
@@ -46532,6 +46604,44 @@ var Pointer = new Class({
     },
 
     /**
+     * Internal method to handle a Mouse Wheel Event
+     *
+     * @method Phaser.Input.Pointer#wheel
+     * @private
+     * @since custom_v3.11
+     *
+     * @param {WheelEvent} event - The Mouse Event to process
+     * @param {integer} time - The current timestamp as generated by the Request Animation Frame or SetTimeout.
+     */
+    wheel: function (event)
+    {
+        if (event.buttons)
+        {
+            this.buttons = event.buttons;
+        }
+
+        this.event = event;
+
+        //  Sets the local x/y properties
+        this.manager.transformPointer(this, event.pageX, event.pageY);
+
+        // Save the wheel delta to the pointer object
+        // FIXME The only mouse wheel event supported is the standard one. To support the other
+        // possible events, Input.wheelEvent should be used in MouseManager.startListeners(), and
+        // this function should be updated to convert the native events into phaser specific
+        // properties.
+        this.justWheeled = true;
+        this.wheelDeltaMode = event.deltaMode;
+        this.wheelDeltaX = event.deltaX;
+        this.wheelDeltaY = event.deltaY;
+        this.wheelDeltaZ = event.deltaZ;
+
+        this.dirty = true;
+
+        this.wasTouch = false;
+    },
+
+    /**
      * Internal method to handle a Touch Start Event.
      *
      * @method Phaser.Input.Pointer#touchstart
@@ -46626,7 +46736,7 @@ var Pointer = new Class({
         this.dirty = true;
 
         this.wasTouch = true;
-        
+
         this.active = false;
     },
 
@@ -46711,31 +46821,31 @@ var Pointer = new Class({
     /**
      * Takes the previous and current Pointer positions and then generates an array of interpolated values between
      * the two. The array will be populated up to the size of the `steps` argument.
-     * 
+     *
      * ```javaScript
      * var points = pointer.getInterpolatedPosition(4);
-     * 
+     *
      * // points[0] = { x: 0, y: 0 }
      * // points[1] = { x: 2, y: 1 }
      * // points[2] = { x: 3, y: 2 }
      * // points[3] = { x: 6, y: 3 }
      * ```
-     * 
+     *
      * Use this if you need to get smoothed values between the previous and current pointer positions. DOM pointer
      * events can often fire faster than the main browser loop, and this will help you avoid janky movement
      * especially if you have an object following a Pointer.
-     * 
+     *
      * Note that if you provide an output array it will only be populated up to the number of steps provided.
      * It will not clear any previous data that may have existed beyond the range of the steps count.
-     * 
+     *
      * Internally it uses the Smooth Step interpolation calculation.
      *
      * @method Phaser.Input.Pointer#getInterpolatedPosition
      * @since 3.11.0
-     * 
+     *
      * @param {integer} [steps=10] - The number of interpolation steps to use.
      * @param {array} [out] - An array to store the results in. If not provided a new one will be created.
-     * 
+     *
      * @return {array} An array of interpolated values.
      */
     getInterpolatedPosition: function (steps, out)
@@ -46842,9 +46952,9 @@ var Features = __webpack_require__(120);
 /**
  * @classdesc
  * The Mouse Manager is a helper class that belongs to the Input Manager.
- * 
+ *
  * Its role is to listen for native DOM Mouse Events and then pass them onto the Input Manager for further processing.
- * 
+ *
  * You do not need to create this class directly, the Input Manager will create an instance of it automatically.
  *
  * @class MouseManager
@@ -46946,9 +47056,9 @@ var MouseManager = new Class({
 
     /**
      * Attempts to disable the context menu from appearing if you right-click on the browser.
-     * 
+     *
      * Works by listening for the `contextmenu` event and prevent defaulting it.
-     * 
+     *
      * Use this if you need to enable right-button mouse support in your game, and the browser
      * menu keeps getting in the way.
      *
@@ -47100,6 +47210,30 @@ var MouseManager = new Class({
     },
 
     /**
+     * The Mouse Wheel Event Handler
+     *
+     * @method Phaser.Input.Mouse.MouseManager#onMouseWheel
+     * @since custom_v3.11
+     *
+     * @param {WheelEvent} event - The native DOM Mouse Wheel Event.
+     */
+    onMouseWheel: function (event)
+    {
+        if (event.defaultPrevented || !this.enabled)
+        {
+            // Do nothing if event already handled
+            return;
+        }
+
+        this.manager.queueMouseWheel(event);
+
+        if (this.capture)
+        {
+            event.preventDefault();
+        }
+    },
+
+    /**
      * Starts the Mouse Event listeners running.
      * This is called automatically and does not need to be manually invoked.
      *
@@ -47118,12 +47252,24 @@ var MouseManager = new Class({
             target.addEventListener('mousemove', this.onMouseMove.bind(this), nonPassive);
             target.addEventListener('mousedown', this.onMouseDown.bind(this), nonPassive);
             target.addEventListener('mouseup', this.onMouseUp.bind(this), nonPassive);
+
+            // FIXME The only mouse wheel event supported is the standard one ('wheel'). To support
+            // the other possible events ('mousewheel' and 'DOMMouseScroll', Input.wheelEvent should
+            // be used and Pointer.wheel() should be updated to convert the native events into phaser
+            // specific properties.
+            target.addEventListener('wheel', this.onMouseWheel.bind(this), nonPassive);
         }
         else
         {
             target.addEventListener('mousemove', this.onMouseMove.bind(this), passive);
             target.addEventListener('mousedown', this.onMouseDown.bind(this), passive);
             target.addEventListener('mouseup', this.onMouseUp.bind(this), passive);
+
+            // FIXME The only mouse wheel event supported is the standard one ('wheel'). To support
+            // the other possible events ('mousewheel' and 'DOMMouseScroll', Input.wheelEvent should
+            // be used and Pointer.wheel() should be updated to convert the native events into phaser
+            // specific properties.
+            target.addEventListener('wheel', this.onMouseWheel.bind(this), passive);
         }
 
         if (Features.pointerLock)
@@ -47150,6 +47296,12 @@ var MouseManager = new Class({
         target.removeEventListener('mousemove', this.onMouseMove);
         target.removeEventListener('mousedown', this.onMouseDown);
         target.removeEventListener('mouseup', this.onMouseUp);
+
+        // FIXME The only mouse wheel event supported is the standard one ('wheel'). To support
+        // the other possible events ('mousewheel' and 'DOMMouseScroll', Input.wheelEvent should
+        // be used and Pointer.wheel() should be updated to convert the native events into phaser
+        // specific properties.
+        target.removeEventListener('wheel', this.onMouseWheel);
 
         if (Features.pointerLock)
         {
@@ -47192,7 +47344,7 @@ var INPUT_CONST = {
 
     /**
      * The mouse pointer is being held down.
-     * 
+     *
      * @name Phaser.Input.MOUSE_DOWN
      * @type {integer}
      * @since 3.10.0
@@ -47201,7 +47353,7 @@ var INPUT_CONST = {
 
     /**
      * The mouse pointer is being moved.
-     * 
+     *
      * @name Phaser.Input.MOUSE_MOVE
      * @type {integer}
      * @since 3.10.0
@@ -47210,7 +47362,7 @@ var INPUT_CONST = {
 
     /**
      * The mouse pointer is released.
-     * 
+     *
      * @name Phaser.Input.MOUSE_UP
      * @type {integer}
      * @since 3.10.0
@@ -47218,40 +47370,49 @@ var INPUT_CONST = {
     MOUSE_UP: 2,
 
     /**
+     * The mouse wheel is used.
+     *
+     * @name Phaser.Input.MOUSE_WHEEL
+     * @type {integer}
+     * @since custom_v3.11
+     */
+    MOUSE_WHEEL: 3,
+
+    /**
      * A touch pointer has been started.
-     * 
+     *
      * @name Phaser.Input.TOUCH_START
      * @type {integer}
      * @since 3.10.0
      */
-    TOUCH_START: 3,
+    TOUCH_START: 4,
 
     /**
      * A touch pointer has been started.
-     * 
+     *
      * @name Phaser.Input.TOUCH_MOVE
      * @type {integer}
      * @since 3.10.0
      */
-    TOUCH_MOVE: 4,
+    TOUCH_MOVE: 5,
 
     /**
      * A touch pointer has been started.
-     * 
+     *
      * @name Phaser.Input.TOUCH_END
      * @type {integer}
      * @since 3.10.0
      */
-    TOUCH_END: 5,
+    TOUCH_END: 6,
 
     /**
      * The pointer lock has changed.
-     * 
+     *
      * @name Phaser.Input.POINTER_LOCK_CHANGE
      * @type {integer}
      * @since 3.10.0
      */
-    POINTER_LOCK_CHANGE: 6
+    POINTER_LOCK_CHANGE: 7
 
 };
 
@@ -47372,7 +47533,7 @@ var InputManager = new Class({
          * @type {object}
          * @since 3.10.0
          */
-        this.domCallbacks = { up: [], down: [], move: [], upOnce: [], downOnce: [], moveOnce: [] };
+        this.domCallbacks = { up: [], down: [], move: [], wheel: [], upOnce: [], downOnce: [], moveOnce: [], wheelOnce: [] };
 
         /**
          * Are there any up callbacks defined?
@@ -47403,6 +47564,16 @@ var InputManager = new Class({
          * @since 3.10.0
          */
         this._hasMoveCallback = false;
+
+        /**
+         * Are there any wheel callbacks defined
+         *
+         * @name Phaser.Input.InputManager#_hasWheelCallback
+         * @private
+         * @type {boolean}
+         * @since custom_v3.11
+         */
+        this._hasWheelCallback = false;
 
         /**
          * Is a custom cursor currently set? (desktop only)
@@ -47733,6 +47904,10 @@ var InputManager = new Class({
                     mouse.up(event, time);
                     break;
 
+                case CONST.MOUSE_WHEEL:
+                    mouse.wheel(event, time);
+                    break;
+
                 case CONST.TOUCH_START:
                     this.startPointer(event, time);
                     break;
@@ -47773,7 +47948,7 @@ var InputManager = new Class({
 
     /**
      * Tells the Input system to set a custom cursor.
-     * 
+     *
      * This cursor will be the default cursor used when interacting with the game canvas.
      *
      * If an Interactive Object also sets a custom cursor, this is the cursor that is reset after its use.
@@ -47783,7 +47958,7 @@ var InputManager = new Class({
      * ```javascript
      * this.input.setDefaultCursor('url(assets/cursors/sword.cur), pointer');
      * ```
-     * 
+     *
      * Please read about the differences between browsers when it comes to the file formats and sizes they support:
      *
      * https://developer.mozilla.org/en-US/docs/Web/CSS/cursor
@@ -47793,7 +47968,7 @@ var InputManager = new Class({
      *
      * @method Phaser.Input.InputManager#setDefaultCursor
      * @since 3.10.0
-     * 
+     *
      * @param {string} cursor - The CSS to be used when setting the default cursor.
      */
     setDefaultCursor: function (cursor)
@@ -47808,7 +47983,7 @@ var InputManager = new Class({
 
     /**
      * Called by the InputPlugin when processing over and out events.
-     * 
+     *
      * Tells the Input Manager to set a custom cursor during its postUpdate step.
      *
      * https://developer.mozilla.org/en-US/docs/Web/CSS/cursor
@@ -47816,7 +47991,7 @@ var InputManager = new Class({
      * @method Phaser.Input.InputManager#setCursor
      * @private
      * @since 3.10.0
-     * 
+     *
      * @param {Phaser.Input.InteractiveObject} interactiveObject - The Interactive Object that called this method.
      */
     setCursor: function (interactiveObject)
@@ -47830,13 +48005,13 @@ var InputManager = new Class({
 
     /**
      * Called by the InputPlugin when processing over and out events.
-     * 
+     *
      * Tells the Input Manager to clear the hand cursor, if set, during its postUpdate step.
      *
      * @method Phaser.Input.InputManager#resetCursor
      * @private
      * @since 3.10.0
-     * 
+     *
      * @param {Phaser.Input.InteractiveObject} interactiveObject - The Interactive Object that called this method.
      */
     resetCursor: function (interactiveObject)
@@ -48160,6 +48335,28 @@ var InputManager = new Class({
     },
 
     /**
+     * Queues a mouse wheel event, as passed in by the MouseManager.
+     * Also dispatches any DOM callbacks for this event.
+     *
+     * @method Phaser.Input.InputManager#queueMouseWheel
+     * @private
+     * @since custom_v3.11
+     *
+     * @param {WheelEvent} event - The native DOM Mouse event.
+     */
+    queueMouseWheel: function (event)
+    {
+        this.queue.push(CONST.MOUSE_WHEEL, event);
+
+        if (this._hasWheelCallback)
+        {
+            var callbacks = this.domCallbacks;
+
+            this._hasWheelCallback = this.processDomCallbacks(callbacks.wheelOnce, callbacks.wheel, event);
+        }
+    },
+
+    /**
      * Adds a callback to be invoked whenever the native DOM `mouseup` or `touchend` events are received.
      * By setting the `isOnce` argument you can control if the callback is called once,
      * or every time the DOM event occurs.
@@ -48299,6 +48496,54 @@ var InputManager = new Class({
         }
 
         this._hasMoveCallback = true;
+
+        return this;
+    },
+
+    /**
+     * Adds a callback to be invoked whenever the native DOM `mousewheel` event is received.
+     * By setting the `isOnce` argument you can control if the callback is called once,
+     * or every time the DOM event occurs.
+     *
+     * Callbacks passed to this method are invoked _immediately_ when the DOM event happens,
+     * within the scope of the DOM event handler. Therefore, they are considered as 'native'
+     * from the perspective of the browser. This means they can be used for tasks such as
+     * opening new browser windows, or anything which explicitly requires user input to activate.
+     * However, as a result of this, they come with their own risks, and as such should not be used
+     * for general game input, but instead be reserved for special circumstances.
+     *
+     * If all you're trying to do is execute a callback when a pointer is moved, then
+     * please use the internal Input event system instead.
+     *
+     * Please understand that these callbacks are invoked when the browser feels like doing so,
+     * which may be entirely out of the normal flow of the Phaser Game Loop. Therefore, you should absolutely keep
+     * Phaser related operations to a minimum in these callbacks. For example, don't destroy Game Objects,
+     * change Scenes or manipulate internal systems, otherwise you run a very real risk of creating
+     * heisenbugs (https://en.wikipedia.org/wiki/Heisenbug) that prove a challenge to reproduce, never mind
+     * solve.
+     *
+     * @method Phaser.Input.InputManager#addWheelCallback
+     * @since custom_v3.11
+     *
+     * @param {function} callback - The callback to be invoked on this dom event.
+     * @param {boolean} [isOnce=false] - `true` if the callback will only be invoked once, `false` to call every time this event happens.
+     *
+     * @return {this} The Input Manager.
+     */
+    addWheelCallback: function (callback, isOnce)
+    {
+        if (isOnce === undefined) { isOnce = false; }
+
+        if (isOnce)
+        {
+            this.domCallbacks.wheelOnce.push(callback);
+        }
+        else
+        {
+            this.domCallbacks.wheel.push(callback);
+        }
+
+        this._hasWheelCallback = true;
 
         return this;
     },
@@ -88078,9 +88323,9 @@ var InputPlugin = new Class({
 
         /**
          * A reference to the Mouse Manager.
-         * 
+         *
          * This property is only set if Mouse support has been enabled in your Game Configuration file.
-         * 
+         *
          * If you just wish to get access to the mouse pointer, use the `mousePointer` property instead.
          *
          * @name Phaser.Input.InputPlugin#mouse
@@ -88104,17 +88349,17 @@ var InputPlugin = new Class({
 
         /**
          * How often should the Pointers be checked?
-         * 
+         *
          * The value is a time, given in ms, and is the time that must have elapsed between game steps before
          * the Pointers will be polled again. When a pointer is polled it runs a hit test to see which Game
          * Objects are currently below it, or being interacted with it.
-         * 
+         *
          * Pointers will *always* be checked if they have been moved by the user, or press or released.
-         * 
+         *
          * This property only controls how often they will be polled if they have not been updated.
          * You should set this if you want to have Game Objects constantly check against the pointers, even
          * if the pointer didn't move itself.
-         * 
+         *
          * Set to 0 to poll constantly. Set to -1 to only poll on user movement.
          *
          * @name Phaser.Input.InputPlugin#pollRate
@@ -88463,6 +88708,11 @@ var InputPlugin = new Class({
             if (pointer.justMoved)
             {
                 total += this.processMoveEvents(pointer);
+            }
+
+            if (pointer.justWheeled)
+            {
+                total += this.processWheelEvents(pointer);
             }
 
             if (total > 0 && manager.globalTopOnly)
@@ -89168,6 +89418,50 @@ var InputPlugin = new Class({
     },
 
     /**
+     * An internal method that handles the Pointer wheel events.
+     *
+     * @method Phaser.Input.InputPlugin#processWheelEvents
+     * @private
+     * @since custom_v3.11
+     *
+     * @param {Phaser.Input.Pointer} pointer - The pointer to check for events against.
+     *
+     * @return {integer} The total number of objects interacted with.
+     */
+    processWheelEvents: function (pointer)
+    {
+        var currentlyOver = this._temp;
+
+        this.emit('pointerwheel', pointer, currentlyOver);
+
+        var total = 0;
+
+        //  Go through all objects the pointer was over and fire their events / callbacks
+        for (var i = 0; i < currentlyOver.length; i++)
+        {
+            var gameObject = currentlyOver[i];
+
+            if (!gameObject.input)
+            {
+                continue;
+            }
+
+            total++;
+
+            gameObject.emit('pointerwheel', pointer, gameObject.input.localX, gameObject.input.localY);
+
+            this.emit('gameobjectwheel', pointer, gameObject);
+
+            if (this.topOnly)
+            {
+                break;
+            }
+        }
+
+        return total;
+    },
+
+    /**
      * Queues a Game Object for insertion into this Input Plugin on the next update.
      *
      * @method Phaser.Input.InputPlugin#queueForInsertion
@@ -89260,7 +89554,7 @@ var InputPlugin = new Class({
      * ```javascript
      * this.add.sprite(x, y, key).setInteractive(this.input.makePixelPerfect());
      * ```
-     * 
+     *
      * The following will create a sprite that is clickable on any pixel that has an alpha value >= 150.
      *
      * ```javascript
@@ -89273,7 +89567,7 @@ var InputPlugin = new Class({
      * As a pointer interacts with the Game Object it will constantly poll the texture, extracting a single pixel from
      * the given coordinates and checking its color values. This is an expensive process, so should only be enabled on
      * Game Objects that really need it.
-     * 
+     *
      * You cannot make non-texture based Game Objects pixel perfect. So this will not work on Graphics, BitmapText,
      * Render Textures, Text, Tilemaps, Containers or Particles.
      *
@@ -89561,7 +89855,7 @@ var InputPlugin = new Class({
 
     /**
      * Sets the Pointers to always poll.
-     * 
+     *
      * When a pointer is polled it runs a hit test to see which Game Objects are currently below it,
      * or being interacted with it, regardless if the Pointer has actually moved or not.
      *
@@ -89584,7 +89878,7 @@ var InputPlugin = new Class({
 
     /**
      * Sets the Pointers to only poll when they are moved or updated.
-     * 
+     *
      * When a pointer is polled it runs a hit test to see which Game Objects are currently below it,
      * or being interacted with it.
      *
@@ -89877,6 +90171,43 @@ var InputPlugin = new Class({
     },
 
     /**
+     * Adds a callback to be invoked whenever the native DOM `mousewheel` event is received.
+     * By setting the `isOnce` argument you can control if the callback is called once,
+     * or every time the DOM event occurs.
+     *
+     * Callbacks passed to this method are invoked _immediately_ when the DOM event happens,
+     * within the scope of the DOM event handler. Therefore, they are considered as 'native'
+     * from the perspective of the browser. This means they can be used for tasks such as
+     * opening new browser windows, or anything which explicitly requires user input to activate.
+     * However, as a result of this, they come with their own risks, and as such should not be used
+     * for general game input, but instead be reserved for special circumstances.
+     *
+     * If all you're trying to do is execute a callback when a pointer is moved, then
+     * please use the internal Input event system instead.
+     *
+     * Please understand that these callbacks are invoked when the browser feels like doing so,
+     * which may be entirely out of the normal flow of the Phaser Game Loop. Therefore, you should absolutely keep
+     * Phaser related operations to a minimum in these callbacks. For example, don't destroy Game Objects,
+     * change Scenes or manipulate internal systems, otherwise you run a very real risk of creating
+     * heisenbugs (https://en.wikipedia.org/wiki/Heisenbug) that prove a challenge to reproduce, never mind
+     * solve.
+     *
+     * @method Phaser.Input.InputPlugin#addWheelCallback
+     * @since custom_v3.11
+     *
+     * @param {function} callback - The callback to be invoked on this dom event.
+     * @param {boolean} [isOnce=false] - `true` if the callback will only be invoked once, `false` to call every time this event happens.
+     *
+     * @return {this} The Input Manager.
+     */
+    addWheelCallback: function (callback, isOnce)
+    {
+        this.manager.addWheelCallback(callback, isOnce);
+
+        return this;
+    },
+
+    /**
      * Adds new Pointer objects to the Input Manager.
      *
      * By default Phaser creates 2 pointer objects: `mousePointer` and `pointer1`.
@@ -89889,7 +90220,7 @@ var InputPlugin = new Class({
      *
      * @method Phaser.Input.InputPlugin#addPointer
      * @since 3.10.0
-     * 
+     *
      * @param {integer} [quantity=1] The number of new Pointers to create. A maximum of 10 is allowed in total.
      *
      * @return {Phaser.Input.Pointer[]} An array containing all of the new Pointer objects that were created.
@@ -89901,7 +90232,7 @@ var InputPlugin = new Class({
 
     /**
      * Tells the Input system to set a custom cursor.
-     * 
+     *
      * This cursor will be the default cursor used when interacting with the game canvas.
      *
      * If an Interactive Object also sets a custom cursor, this is the cursor that is reset after its use.
@@ -89911,7 +90242,7 @@ var InputPlugin = new Class({
      * ```javascript
      * this.input.setDefaultCursor('url(assets/cursors/sword.cur), pointer');
      * ```
-     * 
+     *
      * Please read about the differences between browsers when it comes to the file formats and sizes they support:
      *
      * https://developer.mozilla.org/en-US/docs/Web/CSS/cursor
@@ -89921,7 +90252,7 @@ var InputPlugin = new Class({
      *
      * @method Phaser.Input.InputPlugin#setDefaultCursor
      * @since 3.10.0
-     * 
+     *
      * @param {string} cursor - The CSS to be used when setting the default cursor.
      *
      * @return {Phaser.Input.InputPlugin} This Input instance.
@@ -90011,7 +90342,7 @@ var InputPlugin = new Class({
     },
 
     /**
-     * The Scene that owns this plugin is being destroyed.     
+     * The Scene that owns this plugin is being destroyed.
      * We need to shutdown and then kill off all external references.
      *
      * @method Phaser.Input.InputPlugin#destroy
